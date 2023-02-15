@@ -4,6 +4,9 @@ View & Edit files from Kubernetes Pods
 
 Important: This is a fork of the kubernetes-file-system-explorer https://github.com/sandipchitale/kubernetes-file-system-explorer
 
+
+Get the extension for VSCode: https://marketplace.visualstudio.com/items?itemName=tsimones.kubernetes-file-system-explorer-editor
+
 ## Features
 
 It supports the following commands:
