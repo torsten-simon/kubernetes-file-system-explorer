@@ -152,7 +152,7 @@ class FavoriteNode implements k8s.ClusterExplorerV1.Node {
         const treeItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         treeItem.tooltip = label;
         treeItem.iconPath = new vscode.ThemeIcon('star');
-        treeItem.contextValue = 'containerfoldernode';
+        treeItem.contextValue = 'containerfavorite';
         return treeItem;
     }
 }
@@ -527,9 +527,9 @@ export async function activate(context: vscode.ExtensionContext) {
     explorer.api.registerNodeContributor(new FileSystemNodeContributor(kubectl.api));
     let disposable = vscode.commands.registerCommand('k8s.node.terminal', nodeTerminal);
     context.subscriptions.push(disposable);
-    disposable = vscode.commands.registerCommand('k8s.pod.container.file.favorite', addToFavorites);
+    disposable = vscode.commands.registerCommand('k8s.pod.container.favorite', addToFavorites);
     context.subscriptions.push(disposable);
-    disposable = vscode.commands.registerCommand('k8s.pod.container.file.favoriteRemove', removeFromFavorites);
+    disposable = vscode.commands.registerCommand('k8s.pod.container.favoriteRemove', removeFromFavorites);
     context.subscriptions.push(disposable);
     disposable = vscode.commands.registerCommand('k8s.pod.container.terminal', terminal);
     context.subscriptions.push(disposable);
