@@ -43,12 +43,12 @@
         },
         "commands": [
             {
-                "command": "k8s.pod.container.file.favorite",
+                "command": "k8s.pod.container.favorite",
                 "title": "Add to favorites",
                 "category": "Kubernetes"
             },
             {
-                "command": "k8s.pod.container.file.favoriteRemove",
+                "command": "k8s.pod.container.favoriteRemove",
                 "title": "Remove from favorites",
                 "category": "Kubernetes"
             },
@@ -111,11 +111,11 @@
         "menus": {
             "view/item/context": [
                 {
-                    "command": "k8s.pod.container.file.favorite",
-                    "when": "view == extension.vsKubernetesExplorer && viewItem == containerfilenode"
+                    "command": "k8s.pod.container.favorite",
+                    "when": "view == extension.vsKubernetesExplorer && viewItem == containerfoldernode || view == extension.vsKubernetesExplorer && viewItem == containerfilenode"
                 },
                 {
-                    "command": "k8s.pod.container.file.favoriteRemove",
+                    "command": "k8s.pod.container.favoriteRemove",
                     "when": "view == extension.vsKubernetesExplorer && viewItem =~ /containerfilenodefavorite/i"
                 },
                 {

@@ -5,10 +5,14 @@ import * as k8s from 'vscode-kubernetes-tools-api';
 import { platform } from 'os';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { InputBoxOptions } from 'vscode';
 
 const KUBERNETES_FILE_VIEW = 'kubernetes-file-view';
 const KUBERNETES_FOLDER_FIND = 'kubernetes-folder-find';
 const KUBERNETES_FOLDER_LS_AL = 'kubernetes-folder-ls-al';
+const GLOBAL_FAVORITES = '###GLOBAL###';
+const FAVORITES_POSTFIX = '_favorites';
+
 let globalContext: vscode.ExtensionContext;
 
 class VolumeNode implements k8s.ClusterExplorerV1.Node {
@@ -137,14 +141,23 @@ class FavoriteNode implements k8s.ClusterExplorerV1.Node {
     }
 
     async getChildren(): Promise<k8s.ClusterExplorerV1.Node[]> {
-        const key = this.podName + '_favorites';
-        return (globalContext.globalState.get(key) as string[] || []).map(file => {
+        return [
+            this.namespace + '_' + this.podName + FAVORITES_POSTFIX,
+            this.podName + FAVORITES_POSTFIX,
+            GLOBAL_FAVORITES + FAVORITES_POSTFIX
+        ].map((key) => 
+        (globalContext.globalState.get(key) as string[] || []).map(file => {
             const path = file.split('/');
             const filename = path[path.length - 1];
             delete path[path.length - 1];
             file = path.join('/');
-            return new FileNode(this.podName, this.namespace, file, filename, this.containerName, 'containerfilenodefavorite', this.volumeMounts);
-        });
+            const fn = new FileNode(this.podName, this.namespace, file, filename, this.containerName, 'containerfilenodefavorite', this.volumeMounts);
+            fn.favoriteKey = key;
+            return fn;
+        })
+    ).reduce(
+            (a, b) => [...a, ...b]
+        );
     }
 
     getTreeItem(): vscode.TreeItem {
@@ -152,7 +165,7 @@ class FavoriteNode implements k8s.ClusterExplorerV1.Node {
         const treeItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         treeItem.tooltip = label;
         treeItem.iconPath = new vscode.ThemeIcon('star');
-        treeItem.contextValue = 'containerfoldernode';
+        treeItem.contextValue = 'containerfavorite';
         return treeItem;
     }
 }
@@ -234,6 +247,7 @@ class FileNode implements k8s.ClusterExplorerV1.Node {
     name: string;
     volumeMounts: Array<any>;
     contextValue: string;
+    favoriteKey: string;
     constructor(podName: string, namespace: string, path: string, name: string, containerName: string, contextValue: string, volumeMounts: Array<any>) {
         this.podName = podName;
         this.namespace = namespace;
@@ -272,24 +286,43 @@ class FileNode implements k8s.ClusterExplorerV1.Node {
     }
 
     async addToFavorites() {
-        const key = this.podName + '_favorites';
-        const favorites: string[] = await globalContext.globalState.get(key) || [];
-        if(favorites.includes(this.path + this.name)) {
-            vscode.window.showWarningMessage(`${this.name} is already a favorit of pod ${this.podName}`);
-            return;
-        }
-        favorites.push(this.path + this.name);
-        await globalContext.globalState.update(key, favorites);
-        vscode.window.showInformationMessage(`Added ${this.name} to favorites of pod ${this.podName}`);
-        vscode.commands.executeCommand('extension.vsKubernetesRefreshExplorer');
+        const options = [
+            "Explicit Favorites (Namespace & pod name)",
+            "Pod Favorites (Pod name)",
+            "Global Favorites (All namespaces & pods)",
+        ];
+        vscode.window.showQuickPick(options, {
+            title: "Select favorite scope"
+        }).then(async (result) => {
+            const idx = options.indexOf(result);
+            let key: string;
+            if(idx === 0) {
+                key = this.namespace + '_' + this.podName
+            } else if(idx === 1) {
+                key = this.podName;
+            } else {
+                key = GLOBAL_FAVORITES;
+            }
+            key += '_favorites';
+            const favorites: string[] = await globalContext.globalState.get(key) || [];
+            if(favorites.includes(this.path + this.name)) {
+                vscode.window.showWarningMessage(`${this.name} is already a favorit`);
+                return;
+            }
+            favorites.push(this.path + this.name);
+            await globalContext.globalState.update(key, favorites);
+            vscode.window.showInformationMessage(`Added ${this.name} to favorites`);
+            vscode.commands.executeCommand('extension.vsKubernetesRefreshExplorer');
+        });
+     
+        
     }
 
     async removeFromFavorites() {
-        const key = this.podName + '_favorites';
-        let favorites: string[] = await globalContext.globalState.get(key) || [];
+        let favorites: string[] = await globalContext.globalState.get(this.favoriteKey) || [];
         favorites = favorites.filter(f => f !== (this.path + this.name));
-        await globalContext.globalState.update(key, favorites);
-        vscode.window.showInformationMessage(`Removed ${this.name} from favorites of pod ${this.podName}`);
+        await globalContext.globalState.update(this.favoriteKey, favorites);
+        vscode.window.showInformationMessage(`Removed ${this.name} from favorites`);
         vscode.commands.executeCommand('extension.vsKubernetesRefreshExplorer');
     }
 
@@ -527,9 +560,9 @@ export async function activate(context: vscode.ExtensionContext) {
     explorer.api.registerNodeContributor(new FileSystemNodeContributor(kubectl.api));
     let disposable = vscode.commands.registerCommand('k8s.node.terminal', nodeTerminal);
     context.subscriptions.push(disposable);
-    disposable = vscode.commands.registerCommand('k8s.pod.container.file.favorite', addToFavorites);
+    disposable = vscode.commands.registerCommand('k8s.pod.container.favorite', addToFavorites);
     context.subscriptions.push(disposable);
-    disposable = vscode.commands.registerCommand('k8s.pod.container.file.favoriteRemove', removeFromFavorites);
+    disposable = vscode.commands.registerCommand('k8s.pod.container.favoriteRemove', removeFromFavorites);
     context.subscriptions.push(disposable);
     disposable = vscode.commands.registerCommand('k8s.pod.container.terminal', terminal);
     context.subscriptions.push(disposable);
