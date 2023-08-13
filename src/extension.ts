@@ -591,7 +591,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(disposable);
     disposable = vscode.commands.registerCommand('k8s.pod.container.favorite', addToFavorites);
     context.subscriptions.push(disposable);
-    disposable = vscode.commands.registerCommand('k8s.pFeRemove', removeFromFavorites);
+    disposable = vscode.commands.registerCommand('k8s.pod.container.favoriteRemove', removeFromFavorites);
     context.subscriptions.push(disposable);
     disposable = vscode.commands.registerCommand('k8s.pod.container.terminal', terminal);
     context.subscriptions.push(disposable);
