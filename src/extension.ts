@@ -286,7 +286,9 @@ class FolderNode extends BaseNode {
         }
         const treeItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         treeItem.tooltip = label;
-        treeItem.iconPath = vscode.ThemeIcon.Folder;
+        if(this.contextValue == 'containerfolderrootnode') {
+            treeItem.iconPath = vscode.ThemeIcon.Folder;
+        }
         treeItem.contextValue = 'containerfoldernode';
         return treeItem;
     }
@@ -331,6 +333,7 @@ class FileNode extends BaseNode {
         const treeItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
         treeItem.tooltip = this.path + label;
         treeItem.iconPath = vscode.ThemeIcon.File;
+        treeItem.resourceUri = vscode.Uri.parse(this.name);
         treeItem.contextValue = this.contextValue;
         return treeItem;
     }
@@ -450,7 +453,7 @@ class FileSystemNodeContributor {
                                     volumeMounts.push(volumeMount.mountPath);
                                 });
                             }
-                            containerFilesystems.push(new FolderNode(this.kubectl, parent.name, parent.namespace, '/', '', container.name, 'containerfoldernode', volumeMounts));
+                            containerFilesystems.push(new FolderNode(this.kubectl, parent.name, parent.namespace, '/', '', container.name, 'containerfolderrootnode', volumeMounts));
                             containerFilesystems.push(new FavoriteNode(this.kubectl, parent.name, parent.namespace, container.name, volumeMounts));
                         });
                         return [...volumes, ...containers, ...containerFilesystems];
