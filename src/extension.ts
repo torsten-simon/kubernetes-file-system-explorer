@@ -599,6 +599,8 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(disposable);
     disposable = vscode.commands.registerCommand('k8s.pod.container.folder.ls-al', lsDashAl);
     context.subscriptions.push(disposable);
+    disposable = vscode.commands.registerCommand('k8s.pod.container.folder.terminal', terminal);
+    context.subscriptions.push(disposable);
     disposable = vscode.commands.registerCommand('k8s.pod.container.folder.cp-from', folderCpFrom);
     context.subscriptions.push(disposable);
     disposable = vscode.commands.registerCommand('k8s.pod.container.folder.cp-to-from-folder', folderCpToFromFolder);
@@ -686,12 +688,17 @@ async function nodeTerminal(target?: any) {
 }
 
 async function terminal(target?: any) {
-    if (target && target.nodeType === 'extension') {
+    if (target && target.nodeType === 'extension' && vscode.window.activeTerminal) {
         if (target.impl instanceof ContainerNode) {
-            if (vscode.window.activeTerminal) {
                 const container = target.impl as ContainerNode;
                 vscode.window.activeTerminal.sendText(`kubectl exec -it ${container.podName} -c ${container.name} --namespace ${container.namespace} -- sh`);
-            }
+                return;
+        }
+        if (target.impl instanceof FolderNode) {
+            const folder = target.impl as FolderNode;
+            vscode.window.activeTerminal.sendText(`kubectl exec -it ${folder.podName} -c ${folder.name} --namespace ${folder.namespace} -- sh`);
+            vscode.window.activeTerminal.sendText(`cd ${folder.path}/${folder.name}`);
+            return;
         }
     }
 }
