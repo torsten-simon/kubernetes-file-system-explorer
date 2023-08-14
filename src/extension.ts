@@ -723,7 +723,7 @@ async function terminal(target?: any) {
         }
         if (target.impl instanceof FolderNode) {
             const folder = target.impl as FolderNode;
-            vscode.window.activeTerminal.sendText(`kubectl exec -it ${folder.podName} -c ${folder.name} --namespace ${folder.namespace} -- sh`);
+            vscode.window.activeTerminal.sendText(`kubectl exec -it ${folder.podName} -c ${folder.name} --namespace ${folder.namespace} -- bash`);
             vscode.window.activeTerminal.sendText(`cd ${folder.getFullPath()}`);
             return;
         }

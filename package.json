@@ -3,7 +3,7 @@
     "displayName": "Kubernetes File System Explorer + Editor",
     "icon": "images/icon.png",
     "description": "Kubernetes File System Explorer + Editor",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "license": "SEE IN FILE LICENSE",
     "keywords": [
         "kubernetes"

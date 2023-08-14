@@ -6,6 +6,7 @@ Launch a terminal inside a folder
 
 Important: This is a fork of the kubernetes-file-system-explorer https://github.com/sandipchitale/kubernetes-file-system-explorer
 
+![Pod's filesystem](images/filesystem.png)
 
 Get the extension for VSCode: https://marketplace.visualstudio.com/items?itemName=tsimones.kubernetes-file-system-explorer-editor
 
@@ -33,9 +34,6 @@ This extension adds tree nodes for the Kubernetes Init Containers, Containers an
 - the `haveged` container's file system
 - `View file` command in the context menu of `/etc/bash.bashrc` file
 - `/etc/bash.bashrc` file content loaded in a editor tab
-
-![Pod's filesystem](images/filesystem.png)
-
 
 ### How it works
 
