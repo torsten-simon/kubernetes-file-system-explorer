@@ -1,7 +1,8 @@
 # kubernetes-file-system-explorer-editor README
 
 View & Edit files from Kubernetes Pods
-Add favorite files per pod for quicker access.
+Add favorite files or folders per pod for quicker access.
+Launch a terminal inside a folder
 
 Important: This is a fork of the kubernetes-file-system-explorer https://github.com/sandipchitale/kubernetes-file-system-explorer
 
