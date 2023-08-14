@@ -146,23 +146,28 @@ class FavoriteNode implements k8s.ClusterExplorerV1.Node {
             this.podName + FAVORITES_POSTFIX,
             GLOBAL_FAVORITES + FAVORITES_POSTFIX
         ].map((key) =>
-            (globalContext.globalState.get(key) as string[] || []).map(file => {
-                const data = file.split('\0');
+            (globalContext.globalState.get(key) as string[] || []).map(favoriteValue => {
+                const data = favoriteValue.split('\0');
                 const path = data[0].split('/');
                 const type = data[1] || 'containerfilenodefavorite';
                 let filename = path[path.length - 1];
                 delete path[path.length - 1];
                 let fn: BaseNode;
                 if(type == 'containerfilenodefavorite') {
-                    file = path.join('/');
+                    const file = path.join('/');
                     fn = new FileNode(this.kubectl, this.podName, this.namespace, file, filename, this.containerName, type, this.volumeMounts);
                 } else {
-                    let filename = path[path.length - 2];
+                    let filename = path[path.length - 2] + '/';
                     delete path[path.length - 2];
-                    file = path.join('/');
-                    fn = new FolderNode(this.kubectl, this.podName, this.namespace, file, filename, this.containerName, type, this.volumeMounts);
+                    let file = path.filter(p => !!p).join('/');
+                    if(!file.startsWith('/')) {
+                        file = '/' + file;
+                    }
+                    console.log(data, file);
+                    fn = new FolderNode(this.kubectl, this.podName, this.namespace, file.endsWith('/') ? file : file + '/', filename, this.containerName, type, this.volumeMounts);
                 }
                 fn.favoriteKey = key;
+                fn.favoriteValue = favoriteValue;
                 return fn;
             })
         ).reduce(
@@ -192,6 +197,7 @@ abstract class BaseNode implements k8s.ClusterExplorerV1.Node {
     volumeMounts: Array<any>;
     protected contextValue: string;
     favoriteKey: string;
+    favoriteValue: string;
 
     constructor(kubectl: k8s.KubectlV1, podName: string, namespace: string, path: string, name: string, containerName: string, contextValue: string, volumeMounts: Array<any>) {
         this.kubectl = kubectl;
@@ -211,7 +217,17 @@ abstract class BaseNode implements k8s.ClusterExplorerV1.Node {
     getTreeItem(): vscode.TreeItem {
         throw new Error('Method not implemented.');
     }
-    abstract getFavoriteType(): string;
+    abstract getFavoriteData(): string[];
+
+    async removeFromFavorites() {
+        let favorites: string[] = await globalContext.globalState.get(this.favoriteKey) || [];
+        console.log(favorites, this.getFavoriteData());
+        favorites = favorites.filter(f => f !== this.favoriteValue);
+        await globalContext.globalState.update(this.favoriteKey, favorites);
+        vscode.window.showInformationMessage(`Removed ${this.name} from favorites`);
+        vscode.commands.executeCommand('extension.vsKubernetesRefreshExplorer');
+    }
+
     async addToFavorites() {
         const options = [
             "Explicit Favorites (Namespace & pod name)",
@@ -232,11 +248,13 @@ abstract class BaseNode implements k8s.ClusterExplorerV1.Node {
             }
             key += '_favorites';
             const favorites: string[] = await globalContext.globalState.get(key) || [];
-            if (favorites.includes(this.path + this.name)) {
+            const favKey = this.getFavoriteData().join('\0');
+            if (favorites.includes(favKey)) {
                 vscode.window.showWarningMessage(`${this.name} is already a favorit`);
                 return;
             }
-            favorites.push(this.path + this.name + '\0' + this.getFavoriteType());
+            console.log(favKey);
+            favorites.push(favKey);
             await globalContext.globalState.update(key, favorites);
             vscode.window.showInformationMessage(`Added ${this.name} to favorites`);
             vscode.commands.executeCommand('extension.vsKubernetesRefreshExplorer');
@@ -247,8 +265,14 @@ abstract class BaseNode implements k8s.ClusterExplorerV1.Node {
 
 }
 class FolderNode extends BaseNode {
-    getFavoriteType(): string {
-        return 'containerfoldernodefavorite'
+    getFullPath() {
+        return this.path + this.name + (this.name.endsWith('/') ? '' : '/');
+    }
+    getFavoriteData(): string[] {
+        return [
+            this.getFullPath(),
+            'containerfoldernodefavorite'
+        ];
     }
     async getChildren(): Promise<k8s.ClusterExplorerV1.Node[]> {
         const lsResult = await this.kubectl.invokeCommand(`exec -it ${this.podName} ${this.containerName ? '-c ' + this.containerName : ''} --namespace ${this.namespace} -- ls -F ${this.path}${this.name}`);
@@ -264,7 +288,15 @@ class FolderNode extends BaseNode {
                 .sort((a, b) => !a.endsWith('/') && b.endsWith('/') ? 1 : a.endsWith('/') && !b.endsWith('/') ? -1 : 0);
             return fileNames.map((fileName) => {
                 if (fileName.endsWith('/')) {
-                    return new FolderNode(this.kubectl, this.podName, this.namespace, this.path + this.name, fileName, this.containerName, 'containerfoldernode', this.volumeMounts);
+                    let path = this.path.split('/').filter(p => !!p).join('/');
+                    if(!path.startsWith('/')) {
+                        path = '/' + path;
+                    }
+                    if(!path.endsWith('/')) {
+                        path += '/';
+                    }
+                    console.log(this.path, path);
+                    return new FolderNode(this.kubectl, this.podName, this.namespace, path + this.name, fileName, this.containerName, 'containerfoldernode', this.volumeMounts);
                 } else {
                     return new FileNode(this.kubectl, this.podName, this.namespace, this.path + this.name, fileName, this.containerName, 'containerfilenode', this.volumeMounts);
                 }
@@ -285,11 +317,11 @@ class FolderNode extends BaseNode {
             label += ` [Mounted]`
         }
         const treeItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
-        treeItem.tooltip = label;
+        treeItem.tooltip = this.path + this.name;
         if(this.contextValue == 'containerfolderrootnode') {
             treeItem.iconPath = vscode.ThemeIcon.Folder;
         }
-        treeItem.contextValue = 'containerfoldernode';
+        treeItem.contextValue = this.contextValue;
         return treeItem;
     }
 
@@ -310,8 +342,11 @@ class FolderNode extends BaseNode {
 }
 
 class FileNode extends BaseNode {
-    getFavoriteType(): string {
-        return 'containerfilenodefavorite';
+    getFavoriteData(): string[] {
+        return [
+            this.path + this.name,
+            'containerfilenodefavorite'
+        ];
     }
 
     podName: string;
@@ -345,14 +380,6 @@ class FileNode extends BaseNode {
     async viewFile() {
         let doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`kubernetes-file-view:${this.podName}:${this.namespace}:${this.containerName}:${this.path}${this.name}`));
         await vscode.window.showTextDocument(doc, { preview: false });
-    }
-
-    async removeFromFavorites() {
-        let favorites: string[] = await globalContext.globalState.get(this.favoriteKey) || [];
-        favorites = favorites.filter(f => f !== (this.path + this.name));
-        await globalContext.globalState.update(this.favoriteKey, favorites);
-        vscode.window.showInformationMessage(`Removed ${this.name} from favorites`);
-        vscode.commands.executeCommand('extension.vsKubernetesRefreshExplorer');
     }
 
     async editFile() {
@@ -697,7 +724,7 @@ async function terminal(target?: any) {
         if (target.impl instanceof FolderNode) {
             const folder = target.impl as FolderNode;
             vscode.window.activeTerminal.sendText(`kubectl exec -it ${folder.podName} -c ${folder.name} --namespace ${folder.namespace} -- sh`);
-            vscode.window.activeTerminal.sendText(`cd ${folder.path}/${folder.name}`);
+            vscode.window.activeTerminal.sendText(`cd ${folder.getFullPath()}`);
             return;
         }
     }
@@ -828,7 +855,7 @@ async function addToFavorites(target?: any) {
 async function removeFromFavorites(target?: any) {
     if (target && target.nodeType === 'extension') {
         if (target.impl instanceof BaseNode) {
-            (target.impl as FileNode).removeFromFavorites();
+            (target.impl as BaseNode).removeFromFavorites();
             return;
         }
     }

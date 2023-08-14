@@ -117,11 +117,11 @@
             "view/item/context": [
                 {
                     "command": "k8s.pod.container.favorite",
-                    "when": "view == extension.vsKubernetesExplorer && viewItem == containerfoldernode || view == extension.vsKubernetesExplorer && viewItem == containerfilenode"
+                    "when": "view == extension.vsKubernetesExplorer && (viewItem == containerfoldernode || viewItem == containerfilenode)"
                 },
                 {
                     "command": "k8s.pod.container.favoriteRemove",
-                    "when": "view == extension.vsKubernetesExplorer && viewItem =~ /containerfilenodefavorite/i"
+                    "when": "view == extension.vsKubernetesExplorer && (viewItem =~ /containerfilenodefavorite/i || viewItem =~ /containerfoldernodefavorite/i)"
                 },
                 {
                     "command": "k8s.node.terminal",
